@@ -1,22 +1,21 @@
-# Refer https://docs.halo.run/developer-guide/plugin/basics/manifest
-
 apiVersion: plugin.halo.run/v1alpha1
 kind: Plugin
 metadata:
-  # The name defines how the plugin is invoked, A unique name
-  name: starter
+  name: PluginPsn
 spec:
   enabled: true
   requires: ">=2.23.0"
+  version: 0.1.0
   author:
-    name: Halo
-    website: https://github.com/halo-dev
-  logo: logo.png
-  homepage: https://github.com/halo-dev/plugin-starter#readme
-  repo: https://github.com/halo-dev/plugin-starter
-  issues: https://github.com/halo-dev/plugin-starter/issues
-  displayName: "插件快速开始模板"
-  description: "这是一个插件快速开始模板"
+    name: v2yy
+    website: https://v2yy.com
+  homepage: https://github.com/v2yy/plugin-psn
+  repo: https://github.com/v2yy/plugin-psn
+  issues: https://github.com/v2yy/plugin-psn/issues
+  displayName: "PSN 游戏库"
+  description: "同步 PlayStation 游戏库/时长/奖杯用于博客展示。增量同步，全配置化，凭据只存 Secret。"
   license:
     - name: "GPL-3.0"
-      url: "https://github.com/halo-dev/plugin-starter/blob/main/LICENSE"
+      url: "https://www.gnu.org/licenses/gpl-3.0.html"
+  settingName: plugin-psn-settings
+  configMapName: plugin-psn-configmap

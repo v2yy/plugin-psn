@@ -1,0 +1,131 @@
+apiVersion: v1alpha1
+kind: Setting
+metadata:
+  name: plugin-psn-settings
+spec:
+  forms:
+    - group: connection
+      label: 连接与凭据
+      formSchema:
+        - $formkit: password
+          name: npsso
+          label: npsso 凭证
+          help: |
+            获取 npsso（两步）：① 浏览器登录 store.playstation.com 或 www.playstation.com；② 同浏览器新标签打开 https://ca.account.sony.com/api/v1/ssocookie ，页面显示 {"npsso":"..."} 即为凭证（约 2 个月有效，等同登录凭证勿外传；account.playstation.com 打不开不影响此方法）。
+            保存后插件自动转存进 Halo Secret（psn-npsso）并抹除设置中的明文，之后此项留空即可；换凭证再填新值。
+        - $formkit: text
+          name: credentialSecretName
+          label: （高级）凭据 Secret 名称
+          help: 留空即可，插件自动使用 psn-npsso；仅当你手动用 API 建了别的 Secret 存放 npsso 时才在这里填那个名字。
+        - $formkit: text
+          name: onlineId
+          label: 要同步的 PSN ID
+          help: 留空表示同步凭据账号自身；填他人 ID 时仅能取到对方公开的数据（奖杯等，取决于其隐私设置）。
+        - $formkit: select
+          name: region
+          label: 区域
+          options:
+            - label: 自动
+              value: auto
+            - label: 港服 zh-hant
+              value: zh-hant
+            - label: 日服 ja
+              value: ja
+            - label: 美服 en
+              value: en
+          value: auto
+    - group: sync
+      label: 同步策略
+      formSchema:
+        - $formkit: number
+          name: syncIntervalMinutes
+          label: 自动同步间隔（分钟）
+          value: 1440
+          min: 0
+          max: 10080
+          help: 0 = 关闭定时同步（只可手动触发）。
+        - $formkit: select
+          name: syncMode
+          label: 同步模式
+          options:
+            - label: 增量（默认，推荐）
+              value: incremental
+            - label: 全量替换（危险，仅重置时使用）
+              value: full-replace
+          value: incremental
+        - $formkit: select
+          name: provider
+          label: 数据源
+          options:
+            - label: 第三方同步站 mirror（推荐，免npsso直连）
+              value: mirror
+            - label: 索尼直连 sony（需npsso；上游公共client当前被拒4102，暂停推荐）
+              value: sony
+          value: mirror
+          help: mirror=按 PSNID 从志愿同步站(psnsgame)拉取其服务端已同步的公开数据（约TOP20常玩：名称/封面/时长/最近游玩，无每游戏奖杯明细）；sony=直连PlayStation接口（全量库+奖杯，需npsso）。两者都走同一增量引擎。
+        - $formkit: text
+          name: mirrorBaseUrl
+          label: mirror 接口基址
+          value: https://api.psnsgame.com/api/psn/PSN
+          help: 仅 provider=mirror 时生效。默认 psnsgame；若该站改版可换兼容的镜像源。
+        - $formkit: select
+          name: missingAction
+          label: 上游消失条目的处理
+          options:
+            - label: 保留不动（默认）
+              value: keep
+            - label: 归档隐藏
+              value: archive
+            - label: 删除
+              value: delete
+          value: keep
+        - $formkit: multi-select
+          name: platformFilter
+          label: 同步的平台（留空=全部）
+          options:
+            - label: PS4
+              value: ps4_game
+            - label: PS5
+              value: ps5_native_game
+            - label: PC
+              value: pspc_game
+          value: []
+        - $formkit: textarea
+          name: hiddenGames
+          label: 黑名单
+          placeholder: 每行一个 npGameId（同步时跳过，不影响已入库条目）
+    - group: display
+      label: 前台展示
+      formSchema:
+        - $formkit: checkbox
+          name: routeEnabled
+          label: 启用前台路由
+          value: true
+        - $formkit: text
+          name: routePath
+          label: 路由路径
+          validation: required
+          value: /psn
+        - $formkit: text
+          name: templateName
+          label: 主题模板名
+          validation: required
+          value: psn
+          help: 主题 templates/ 下需提供 <模板名>.html（模板变量：psnGames = Finder 分页结果）。
+        - $formkit: number
+          name: pageSize
+          label: 每页数量
+          value: 24
+          min: 6
+          max: 100
+        - $formkit: select
+          name: sortDefault
+          label: 默认排序
+          options:
+            - label: 最近游玩
+              value: lastPlayed
+            - label: 时长
+              value: playtime
+            - label: 奖杯进度
+              value: trophyProgress
+          value: lastPlayed

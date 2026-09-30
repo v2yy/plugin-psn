@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="zh-CN" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{modules/layout :: layout(content=~{::content}, hero=~{}, isHome=false)}">
+<body>
+<th:block th:fragment="content">
+  <div class="moe-page-head moe-card moe-fancy-head">
+    <div class="moe-halo"><b class="moe-halo-num" th:text="${psnGames != null} ? ${psnGames.total} : 0">0</b><small>款游戏</small></div>
+    <div class="moe-fancy-head-text">
+      <h1 class="moe-page-title"><span class="moe-page-title-icon">🎮</span><span>我的 PSN 游戏库</span></h1>
+      <p class="moe-links-sub">数据来自 PlayStation Network ♪(´▽｀)</p>
+    </div>
+  </div>
+
+  <div th:if="${psnGames != null and psnGames.summary != null}" class="moe-card" style="margin-bottom:1rem;">
+    <div style="display:flex;flex-wrap:wrap;gap:1.2rem;font-size:.9rem;opacity:.85;">
+      <span>总时长 <b th:text="${#numbers.formatDecimal(psnGames.summary.totalPlaytimeHours,1,1)}">0</b> h</span>
+      <span>💎 <b th:text="${psnGames.summary.platinum}">0</b></span>
+      <span>🥇 <b th:text="${psnGames.summary.gold}">0</b></span>
+      <span>🥈 <b th:text="${psnGames.summary.silver}">0</b></span>
+      <span>🥉 <b th:text="${psnGames.summary.bronze}">0</b></span>
+      <span>平均进度 <b th:text="${psnGames.summary.avgProgress}">0</b>%</span>
+    </div>
+  </div>
+
+  <!-- 平台筛选 -->
+  <div class="moe-card" style="margin-bottom:1rem;" th:if="${psnGames != null}">
+    <div style="display:flex;flex-wrap:wrap;gap:.5rem;align-items:center;">
+      <span style="opacity:.7;">平台</span>
+      <a th:href="@{${psnGames.routePath}}" class="moe-btn"
+         th:classappend="${#strings.isEmpty(psnGames.platform)} ? ' is-active' : ''">全部</a>
+      <a th:href="@{${psnGames.routePath}(platform='ps4_game')}" class="moe-btn"
+         th:classappend="${psnGames.platform == 'ps4_game'} ? ' is-active' : ''">PS4</a>
+      <a th:href="@{${psnGames.routePath}(platform='ps5_native_game')}" class="moe-btn"
+         th:classappend="${psnGames.platform == 'ps5_native_game'} ? ' is-active' : ''">PS5</a>
+      <a th:href="@{${psnGames.routePath}(platform='pspc_game')}" class="moe-btn"
+         th:classappend="${psnGames.platform == 'pspc_game'} ? ' is-active' : ''">PC</a>
+      <span style="opacity:.7;margin-left:1rem;">排序</span>
+      <a th:href="@{${psnGames.routePath}(sort='lastPlayed')}" class="moe-btn"
+         th:classappend="${psnGames.sort == 'lastPlayed'} ? ' is-active' : ''">最近游玩</a>
+      <a th:href="@{${psnGames.routePath}(sort='playtime')}" class="moe-btn"
+         th:classappend="${psnGames.sort == 'playtime'} ? ' is-active' : ''">时长</a>
+      <a th:href="@{${psnGames.routePath}(sort='trophyProgress')}" class="moe-btn"
+         th:classappend="${psnGames.sort == 'trophyProgress'} ? ' is-active' : ''">奖杯进度</a>
+    </div>
+  </div>
+
+  <div class="moe-bangumi-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:1rem;"
+       th:if="${psnGames != null}">
+    <div th:each="g,gStat : ${psnGames.items}" class="moe-card moe-bangumi-item"
+         th:style="|animation-delay:${gStat.index * 60}ms; display:block; overflow:hidden;|">
+      <a th:href="${!#strings.isEmpty(g.spec.npGameId) ? 'https://store.playstation.com/en-us/product/' + g.spec.npGameId : 'javascript:;'}"
+         target="_blank" rel="noopener" style="text-decoration:none;color:inherit;display:block;"
+         th:title="${g.spec.name}">
+        <div style="aspect-ratio:3/4;border-radius:.6rem;overflow:hidden;background:rgba(127,127,127,.12);">
+          <img th:if="${!#strings.isEmpty(g.spec.coverUrl)}" th:src="${g.spec.coverUrl}" th:alt="${g.spec.name}"
+               loading="lazy" referrerpolicy="no-referrer"
+               style="width:100%;height:100%;object-fit:cover;"/>
+          <div th:unless="${!#strings.isEmpty(g.spec.coverUrl)}"
+               style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:2.5rem;opacity:.3;">🎮</div>
+        </div>
+        <div style="padding:.5rem .2rem .2rem;">
+          <div style="font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" th:text="${g.spec.name}">游戏名</div>
+          <div style="font-size:.8rem;opacity:.75;display:flex;justify-content:space-between;margin-top:.2rem;">
+            <span th:text="${g.spec.platform}">平台</span>
+            <span th:if="${g.spec.playtimeHours > 0}"
+                  th:text="${#numbers.formatDecimal(g.spec.playtimeHours,1,1)} + ' h'">时长</span>
+          </div>
+          <div th:if="${g.spec.progressTotal > 0}" style="margin-top:.35rem;font-size:.75rem;">
+            <div style="background:rgba(127,127,127,.18);border-radius:4px;height:6px;overflow:hidden;">
+              <div style="height:100%;background:#79c142;border-radius:4px;"
+                   th:style="'width:' + ${g.spec.progress} + '%'"></div>
+            </div>
+            <div style="opacity:.65;margin-top:.15rem;"
+                 th:text="${g.spec.progressEarned} + '/' + ${g.spec.progressTotal} + ' 奖杯 · ' + ${g.spec.progress} + '%'">奖杯进度</div>
+          </div>
+        </div>
+      </a>
+    </div>
+  </div>
+
+  <div th:if="${psnGames == null or psnGames.items == null or #lists.isEmpty(psnGames.items)}" class="moe-card moe-empty">
+    还没有同步到数据 (｡･ω･｡) 去插件设置填好凭据后点一次同步吧～
+  </div>
+
+  <div th:if="${psnGames != null and (psnGames.hasPrevious() or psnGames.hasNext())}" class="moe-card"
+       style="display:flex;justify-content:space-between;align-items:center;margin-top:1rem;">
+    <a th:if="${psnGames.hasPrevious()}" th:href="@{${psnGames.prevUrl}}" class="moe-btn">← 上一页</a>
+    <span th:text="|第 ${psnGames.page} / ${psnGames.totalPages} 页|">页码</span>
+    <a th:if="${psnGames.hasNext()}" th:href="@{${psnGames.nextUrl}}" class="moe-btn">下一页 →</a>
+  </div>
+</th:block>
+</body>
+</html>

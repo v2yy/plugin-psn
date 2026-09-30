@@ -4,24 +4,14 @@ plugins {
     id "run.halo.plugin.devtools" version "0.6.2"
 }
 
-group 'run.halo.starter'
+group 'dev.v2yy'
 
 repositories {
-    maven {
-        name = 'Central Portal Snapshots'
-        url = 'https://central.sonatype.com/repository/maven-snapshots/'
-
-        // Only search this repository for the specific dependency
-        content {
-            includeGroupAndSubgroups('run.halo')
-        }
-    }
     mavenCentral()
 }
 
 dependencies {
-    // TODO Change to a released version once available
-    implementation platform('run.halo.tools.platform:plugin:2.23.0-SNAPSHOT')
+    implementation platform('run.halo.tools.platform:plugin:2.26.0')
     compileOnly 'run.halo.app:api'
 
     testImplementation 'run.halo.app:api'
@@ -44,21 +34,10 @@ tasks.withType(JavaCompile).configureEach {
     options.release = 21
 }
 
-tasks.register('processUiResources', Copy) {
-    from project(':ui').layout.buildDirectory.dir('dist')
-    into layout.buildDirectory.dir('resources/main/console')
-    dependsOn project(':ui').tasks.named('assemble')
-    shouldRunAfter tasks.named('processResources')
-}
-
-tasks.named('classes') {
-    dependsOn tasks.named('processUiResources')
-}
-
 tasks.named('generatePluginComponentsIdx') {
     notCompatibleWithConfigurationCache('This task invokes "Task.project" at execution time, which is not supported with configuration cache.')
 }
 
 halo {
-    version = '2.23.0-beta.2'
+    version = '2.26.0'
 }
