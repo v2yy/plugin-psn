@@ -51,6 +51,7 @@ public class PsnConfigService {
         private String missingAction;
         private String provider;
         private String mirrorBaseUrl;
+        private String storeRegion;
         private List<String> platformFilter;
         private String hiddenGames;
     }
@@ -171,6 +172,7 @@ public class PsnConfigService {
         cfg.setMissingAction(trimTo(f.getMissingAction(), "keep"));
         cfg.setProvider(trimTo(f.getProvider(), "mirror"));
         cfg.setMirrorBaseUrl(trimTo(f.getMirrorBaseUrl(), "https://api.psnsgame.com/api/psn/PSN"));
+        cfg.setStoreRegion(normalizeStoreRegion(f.getStoreRegion(), cfg.getRegion()));
         cfg.setPlatformFilter(f.getPlatformFilter() == null ? List.of() : f.getPlatformFilter());
         List<String> hl = new ArrayList<>();
         if (f.getHiddenGames() != null) {
@@ -192,6 +194,19 @@ public class PsnConfigService {
         cfg.setTemplateName(trimTo(f.getTemplateName(), "psn"));
         cfg.setPageSize(f.getPageSize() == null || f.getPageSize() <= 0 ? 24 : f.getPageSize());
         cfg.setSortDefault(trimTo(f.getSortDefault(), "lastPlayed"));
+    }
+
+    /** 商店区域：显式 storeRegion 优先；否则从 region(auto/hk/us/jp/...)推导；兜底 us。 */
+    static String normalizeStoreRegion(String storeRegion, String region) {
+        String s = storeRegion == null ? "" : storeRegion.trim().toLowerCase();
+        if (s.matches("[a-z]{2}")) {
+            return s;
+        }
+        String r = region == null ? "" : region.trim().toLowerCase();
+        if (r.matches("[a-z]{2}")) {
+            return r;
+        }
+        return "us";
     }
 
     private void upsertSecret(String name, String npssoValue) {

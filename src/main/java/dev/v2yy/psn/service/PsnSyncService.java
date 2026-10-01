@@ -6,6 +6,7 @@ import dev.v2yy.psn.client.PsnAuthClient;
 import dev.v2yy.psn.client.PsnMirrorClient;
 import dev.v2yy.psn.model.PsnConfig;
 import dev.v2yy.psn.model.PsnGame;
+import dev.v2yy.psn.model.PsnStatus;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.time.OffsetDateTime;
@@ -37,6 +38,59 @@ public class PsnSyncService {
     private static final int MAX_ITEMS = 2000;
 
     public static final AtomicReference<SyncStats> LAST = new AtomicReference<>(new SyncStats());
+    /** 最近一次成功（供状态视图与空态三分）。 */
+    public static final AtomicReference<SyncStats> LAST_OK = new AtomicReference<>();
+    /** 运行标记：sync() 进入即 set，结束 set null。 */
+    public static final AtomicReference<String> RUNNING_SINCE = new AtomicReference<>();
+
+    /** 状态视图：前台页脚条 + 后台 status 接口共用（绝不回显任何凭据）。 */
+    public static PsnStatus statusView(PsnConfig cfg, int storedCount) {
+        return statusView(cfg, storedCount, null);
+    }
+
+    public static PsnStatus statusView(PsnConfig cfg, int storedCount, String maxStoredSyncAt) {
+        PsnStatus s = new PsnStatus();
+        s.provider = cfg == null ? "mirror" : cfg.getProvider();
+        String running = RUNNING_SINCE.get();
+        SyncStats last = LAST.get();
+        SyncStats ok = LAST_OK.get();
+        if (ok != null) {
+            s.lastSuccessAt = ok.finishedAt;
+            s.itemCount = ok.upstream > 0 ? ok.upstream : storedCount;
+            s.created = ok.created;
+            s.updated = ok.updated;
+            s.skipped = ok.skipped;
+            s.degraded = ok.fellBack;
+        } else if (maxStoredSyncAt != null && !maxStoredSyncAt.isBlank()) {
+            // 重启后内存态丢失：用库里最大的 spec.lastSyncAt 兜底，避免误显示「尚未同步」
+            s.lastSuccessAt = maxStoredSyncAt;
+            s.itemCount = storedCount;
+        }
+        if (running != null) {
+            s.state = "running";
+            s.runningSince = running;
+            return s;
+        }
+        if (last == null || (last.startedAt == null && last.finishedAt == null)) {
+            s.state = (ok != null || s.lastSuccessAt != null) ? "ok" : "idle";
+            return s;
+        }
+        if (last.error == null) {
+            s.state = "ok";
+        } else {
+            s.state = "error";
+            s.lastFailureAt = last.finishedAt;
+            s.errorKind = last.classifiedKind();
+            s.errorText = last.error;
+            if (last.provider != null) {
+                s.provider = last.provider;
+            }
+            if (ok != null) {
+                s.itemCount = Math.max(ok.upstream, storedCount);
+            }
+        }
+        return s;
+    }
 
     private final PsnConfigService configService;
     private final PsnAuthClient authClient;
@@ -65,14 +119,29 @@ public class PsnSyncService {
                                 "PSN_NOT_CONFIGURED: sony 数据源需先在插件设置里粘贴 npsso 并保存");
                         }
                     }
+                    SyncStats running = new SyncStats();
+                    running.startedAt = OffsetDateTime.now().toString();
+                    running.provider = cfg.getProvider();
+                    LAST.set(running);
+                    RUNNING_SINCE.set(running.startedAt);
                     return syncWithConfig(cfg, npsso);
                 })
                 .subscribeOn(Schedulers.boundedElastic()))
-            .doOnNext(LAST::set)
+            .doOnNext(stats -> {
+                LAST.set(stats);
+                RUNNING_SINCE.set(null);
+                if (stats.error == null) {
+                    LAST_OK.set(stats);
+                }
+            })
             .doOnError(e -> {
-                SyncStats s = new SyncStats();
+                SyncStats s = LAST.get();
+                if (s == null || s.startedAt == null) {
+                    s = new SyncStats();
+                }
                 s.error = e.getMessage();
                 s.finishedAt = OffsetDateTime.now().toString();
+                RUNNING_SINCE.set(null);
                 LAST.set(s);
                 log.warn("[PSN] 同步失败: {}", e.getMessage());
             });
@@ -83,9 +152,11 @@ public class PsnSyncService {
         stats.mode = cfg.getSyncMode();
 
         Map<String, RemoteView> remote = "mirror".equalsIgnoreCase(cfg.getProvider())
-            ? fetchMirror(cfg)
+            ? fetchMirror(cfg, stats)
             : fetchSony(cfg, npsso);
         stats.upstream = remote.size();
+        stats.provider = cfg.getProvider();
+        stats.finishedAt = OffsetDateTime.now().toString();
 
         if (!cfg.getPlatformFilter().isEmpty()) {
             remote.values().removeIf(rv -> !cfg.getPlatformFilter().contains(rv.platformGroup));
@@ -210,7 +281,7 @@ public class PsnSyncService {
      * 主源 getallgamelife 分页=全量库(名/封面/titleids/奖杯明细/时长/进度)；
      * 失败时回退 getRecentlyPlayed(TOP20，无奖杯明细)。
      */
-    private Map<String, RemoteView> fetchMirror(PsnConfig cfg) {
+    private Map<String, RemoteView> fetchMirror(PsnConfig cfg, SyncStats stats) {
         String psnId = cfg.getOnlineId();
         if (psnId.isBlank()) {
             throw new IllegalStateException(
@@ -236,6 +307,9 @@ public class PsnSyncService {
                 page++;
             } while (page <= pages && page <= 40);
         } catch (Exception e) {
+            if (stats != null) {
+                stats.fellBack = true;
+            }
             log.warn("[PSN] mirror 全量库接口失败({})，回退 RecentlyPlayed TOP20",
                 e.getClass().getSimpleName());
             JsonNode arr = mirrorClient.getRecentlyPlayed(cfg.getMirrorBaseUrl(), psnId);
@@ -628,8 +702,58 @@ public class PsnSyncService {
         public int archived;
         public int deleted;
         public int kept;
+        public String startedAt;
         public String finishedAt;
         public String error;
+        /** 生效数据源与是否发生降级（mirror 主接口失败退到 RecentlyPlayed） */
+        public String provider = "mirror";
+        public boolean fellBack;
+        /** 显式归类（避免前台用字符串猜测） */
+        public String errorCategory = "";
+
+        /** 4102/TOKEN_EXCHANGE 只是「当前客户端认证被拒」，绝不断言索尼轮换凭据。 */
+        public String classifyError(String msg) {
+            if (msg == null || msg.isBlank()) {
+                return "";
+            }
+            if (msg.startsWith("PSN_NOT_CONFIGURED") || msg.startsWith("MIRROR_NEED_ONLINE_ID")) {
+                return "not_configured";
+            }
+            if (msg.contains("4102") || msg.contains("TOKEN_EXCHANGE") || msg.contains("NPSSO_INVALID")
+                || msg.contains("PSN_AUTH_FAILED") || msg.contains("NO_ACCESS_CODE")) {
+                return "auth_rejected";
+            }
+            if (msg.contains("PSN_TOKEN_EXPIRED")) {
+                return "auth_rejected";
+            }
+            if (msg.contains("MIRROR_EMPTY")) {
+                return "mirror_empty";
+            }
+            if (msg.contains("MIRROR_BAD_RESPONSE") || msg.contains("MIRROR_BAD_LIBRARY_SHAPE")) {
+                return "mirror_unreachable";
+            }
+            if (msg.contains("PSN_FORBIDDEN")) {
+                return "privacy_blocked";
+            }
+            if (msg.contains("PSN_HTTP_") || msg.contains("PSN_REQUEST_ERROR")
+                || msg.contains("timed out") || msg.contains("timeout") || msg.contains("UnknownHost")
+                || msg.contains("Connection") || msg.contains("Connect")) {
+                return "network";
+            }
+            return "internal";
+        }
+
+        public String errorKind(String fallback) {
+            return errorCategory == null || errorCategory.isEmpty()
+                ? (error == null ? "none" : fallback) : errorCategory;
+        }
+
+        public String classifiedKind() {
+            if (errorCategory != null && !errorCategory.isEmpty()) {
+                return errorCategory;
+            }
+            return error == null ? "none" : classifyError(error);
+        }
     }
 
     static String sha1(String s) {

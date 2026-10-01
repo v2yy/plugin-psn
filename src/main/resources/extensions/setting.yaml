@@ -67,7 +67,23 @@ spec:
           name: mirrorBaseUrl
           label: mirror 接口基址
           value: https://api.psnsgame.com/api/psn/PSN
-          help: 仅 provider=mirror 时生效。默认 psnsgame；若该站改版可换兼容的镜像源。
+          help: 仅 provider=mirror 时生效。默认 psnsgame；若该站改版可换兼容的镜像源。mirror 属非官方数据，前台会固定标注。
+        - $formkit: select
+          name: storeRegion
+          label: 商店链接区域
+          options:
+            - label: US 美服（默认，卡片明示）
+              value: us
+            - label: HK 港服
+              value: hk
+            - label: JP 日服
+              value: jp
+            - label: TW 台服
+              value: tw
+            - label: GB 英服
+              value: gb
+          value: us
+          help: 游戏卡片跳 store.playstation.com 的区域段。索尼商店商品按区独立，选你常用的区。
         - $formkit: select
           name: missingAction
           label: 上游消失条目的处理

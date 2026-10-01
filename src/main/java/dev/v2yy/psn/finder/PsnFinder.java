@@ -4,6 +4,7 @@ import dev.v2yy.psn.model.PsnConfig;
 import dev.v2yy.psn.model.PsnGame;
 import dev.v2yy.psn.model.PsnListResult;
 import dev.v2yy.psn.service.PsnConfigService;
+import dev.v2yy.psn.service.PsnSyncService;
 import java.util.Comparator;
 import java.util.List;
 import org.springframework.data.domain.Sort;
@@ -56,7 +57,17 @@ public class PsnFinder {
                     : all.stream().filter(g -> platformGroup.equals(g.getSpec().getPlatformGroup()))
                         .toList();
                 return configService.load().defaultIfEmpty(new PsnConfig())
-                    .map(cfg -> toResult(filtered, cfg, p, s, platformGroup, sort));
+                    .map(cfg -> {
+                        PsnListResult res = toResult(filtered, cfg, p, s, platformGroup, sort);
+                        String maxSync = all.stream()
+                            .map(g -> nullSafe(g.getSpec().getLastSyncAt()))
+                            .filter(x -> !x.isEmpty())
+                            .max(String::compareTo)
+                            .orElse(null);
+                        res.setStatus(PsnSyncService.statusView(cfg, filtered.size(), maxSync));
+                        res.setStoreRegion(cfg.getStoreRegion());
+                        return res;
+                    });
             });
     }
 

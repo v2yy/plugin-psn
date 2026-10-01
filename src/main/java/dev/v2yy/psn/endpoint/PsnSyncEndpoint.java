@@ -59,7 +59,13 @@ public class PsnSyncEndpoint implements CustomEndpoint {
 
     private Map<String, Object> statsView(PsnSyncService.SyncStats s) {
         Map<String, Object> m = new LinkedHashMap<>();
+        String kind = s.classifiedKind();
         m.put("success", s.error == null);
+        m.put("errorKind", kind);
+        m.put("running", PsnSyncService.RUNNING_SINCE.get() != null);
+        m.put("provider", s.provider);
+        m.put("degraded", s.fellBack);
+        m.put("startedAt", s.startedAt);
         m.put("mode", s.mode);
         m.put("upstream", s.upstream);
         m.put("created", s.created);
@@ -69,6 +75,8 @@ public class PsnSyncEndpoint implements CustomEndpoint {
         m.put("deleted", s.deleted);
         m.put("kept", s.kept);
         m.put("finishedAt", s.finishedAt);
+        m.put("lastSuccessAt", PsnSyncService.LAST_OK.get() == null
+            ? null : PsnSyncService.LAST_OK.get().finishedAt);
         m.put("error", s.error);
         return m;
     }

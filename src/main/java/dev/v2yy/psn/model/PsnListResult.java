@@ -15,6 +15,10 @@ public class PsnListResult {
     private String sort;
     private String routePath = "/psn";
     private Summary summary;
+    /** 同步状态视图（插件在组装列表时填入；模板页脚条据此显示源/时间/错误） */
+    private PsnStatus status;
+    /** 商店链接区域段（us/hk/jp...），模板拼 store 链接用 */
+    private String storeRegion = "us";
 
     public int getTotalPages() {
         return size <= 0 ? 1 : (int) Math.ceil((double) total / size);
