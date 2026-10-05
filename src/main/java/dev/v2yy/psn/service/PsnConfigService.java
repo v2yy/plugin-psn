@@ -61,6 +61,7 @@ public class PsnConfigService {
         private Boolean routeEnabled;
         private String routePath;
         private String templateName;
+        private String detailTemplateName;
         private Integer pageSize;
         private String sortDefault;
     }
@@ -192,6 +193,7 @@ public class PsnConfigService {
         cfg.setRouteEnabled(f.getRouteEnabled() == null || f.getRouteEnabled());
         cfg.setRoutePath(trimTo(f.getRoutePath(), "/psn"));
         cfg.setTemplateName(trimTo(f.getTemplateName(), "psn"));
+        cfg.setDetailTemplateName(trimTo(f.getDetailTemplateName(), "psn_game"));
         cfg.setPageSize(f.getPageSize() == null || f.getPageSize() <= 0 ? 24 : f.getPageSize());
         cfg.setSortDefault(trimTo(f.getSortDefault(), "lastPlayed"));
     }

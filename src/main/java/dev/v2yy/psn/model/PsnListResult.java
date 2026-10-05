@@ -17,8 +17,15 @@ public class PsnListResult {
     private Summary summary;
     /** 同步状态视图（插件在组装列表时填入；模板页脚条据此显示源/时间/错误） */
     private PsnStatus status;
-    /** 商店链接区域段（us/hk/jp...），模板拼 store 链接用 */
+    /** 商店链接区域段（us/hk/jp/tw/gb），模板拼 store 搜索链接用 */
     private String storeRegion = "us";
+    /** 商店搜索链接（详情页跳转兜底用；商品直达无法由 Title ID 拼出，见 PsnConfig 注释） */
+    public String storeSearchUrl(String npGameId) {
+        return PsnConfig.buildStoreSearchUrl(storeRegion, npGameId);
+    }
+    public String getStoreRegionLabel() {
+        return PsnConfig.storeRegionLabel(storeRegion);
+    }
 
     public int getTotalPages() {
         return size <= 0 ? 1 : (int) Math.ceil((double) total / size);

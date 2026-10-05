@@ -40,6 +40,20 @@ public class PsnMirrorClient {
         return get(baseUrl, "gettrophySummary?PSNID=" + enc(psnId));
     }
 
+    /** 单游戏逐奖杯明细（参考页 psnsgame GameTrophyDetail 同源接口）：trophyList 按组分 earned/未earn。 */
+    public JsonNode getOneUserGameTrophy(String baseUrl, String psnId, String npCommunicationId,
+                                         String titleId) {
+        return get(baseUrl, "getoneusergametrophy?PSNID=" + enc(psnId)
+            + "&npid=" + enc(npCommunicationId) + "&titleids=" + enc(titleId)
+            + "&language=zh-Hans&refreshLanguage=false");
+    }
+
+    /** 近期游玩记录（按天+会话）。 */
+    public JsonNode getGamePlaytimeHistory(String baseUrl, String psnId, String titleId) {
+        return get(baseUrl, "getGamePlaytimeHistory?PSNID=" + enc(psnId)
+            + "&titleids=" + enc(titleId));
+    }
+
     /** 站方数据新鲜度：accountCountryUpdatedAt 等字段可作最后同步参考。 */
     public JsonNode getCareerSummary(String baseUrl, String psnId) {
         return get(baseUrl, "getCareerSummary?PSNID=" + enc(psnId));

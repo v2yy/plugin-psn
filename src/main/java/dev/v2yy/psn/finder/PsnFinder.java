@@ -45,6 +45,17 @@ public class PsnFinder {
         return listInner(platformGroup, page, size, sort);
     }
 
+    /** 详情页：按扩展名（psn-<sha1前20位>，列表卡片 href 携带）取单个游戏；不可见/不存在返回 empty */
+    public Mono<PsnGame> byName(String metadataName) {
+        if (metadataName == null || metadataName.isBlank()
+            || !metadataName.matches("[a-z0-9-]{1,64}")) {
+            return Mono.empty();
+        }
+        return client.fetch(PsnGame.class, metadataName)
+            .filter(g -> !Boolean.TRUE.equals(g.getSpec().getHidden())
+                && !Boolean.TRUE.equals(g.getSpec().getArchived()));
+    }
+
     private Mono<PsnListResult> listInner(String platformGroup, int page, int size, String sort) {
         int p = Math.max(page, 1);
         int s = size <= 0 ? 24 : size;

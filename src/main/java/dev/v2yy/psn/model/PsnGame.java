@@ -40,6 +40,10 @@ public class PsnGame extends AbstractExtension {
         private int bronze;
         private String trophyLastUpdated;
 
+        /** 详情页增强缓存（按需从镜像拉，同步不覆盖、checksum 不含） */
+        private String detailSnapshot;
+        private String detailSnapshotAt;
+
         private boolean inTrophyList;
         private boolean inGameList;
 
